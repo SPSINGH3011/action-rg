@@ -59,16 +59,16 @@ jobs:
           az account set --subscription $ARM_SUBSCRIPTION_ID
           
           echo "✅ Azure login successful!"
-    steps:
+   
       - name: Terraform Init
         run: terraform init -input=false
-    steps:
+ 
       - name: Terraform Validate
         run: terraform validate
-    steps:
+   
       - name: Terraform Plan
         run: terraform plan -input=false -out=tfplan
-    steps:
+    
       - name: Upload Plan Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -80,7 +80,7 @@ jobs:
     #     run: |
     #       echo "⚠️ Applying Terraform changes to PROD environment..."
     #       terraform apply -auto-approve tfplan
-    steps:
+    
       - name: Terraform Apply (Auto Apply for Dev)
         if: github.event.inputs.environment == 'dev'
         run: |
