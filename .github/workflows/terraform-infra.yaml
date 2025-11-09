@@ -1,0 +1,161 @@
+# name: Terraform Multi-Env CI/CD
+
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       environment:
+#         description: "Select environment to deploy (dev/prod)"
+#         required: true
+#         default: "dev"
+#         type: choice
+#         options:
+#           - dev
+#           - prod
+
+# jobs:
+#   terraform:
+#     name: Terraform Deploy
+#     runs-on: ubuntu-latest
+
+#     env:
+#       ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+#       ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+#       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+#       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+#     steps:
+#       - name: Checkout Code
+#         uses: actions/checkout@v4
+
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_version: 1.8.5
+
+#       - name: Azure Login using Service Principal
+#         run: |
+#           az login --service-principal \
+#             -u $ARM_CLIENT_ID \
+#             -p $ARM_CLIENT_SECRET \
+#             --tenant $ARM_TENANT_ID
+          
+#           az account set --subscription $ARM_SUBSCRIPTION_ID
+#           echo "✅ Azure login successful!"
+
+#       # 🗂️ Select working directory based on environment
+#       - name: Set working directory
+#         id: setdir
+#         run: |
+#           if [ "${{ github.event.inputs.environment }}" = "dev" ]; then
+#             echo "working_dir=env/dev" >> $GITHUB_OUTPUT
+#           else
+#             echo "working_dir=env/prod" >> $GITHUB_OUTPUT
+#           fi
+
+#       - name: Terraform Init
+#         working-directory: ${{ steps.setdir.outputs.working_dir }}
+#         run: terraform init -input=false
+
+#       - name: Terraform Validate
+#         working-directory: ${{ steps.setdir.outputs.working_dir }}
+#         run: terraform validate
+
+#       - name: Terraform Plan
+#         working-directory: ${{ steps.setdir.outputs.working_dir }}
+#         run: terraform plan -input=false -out=tfplan
+
+#       - name: Upload Plan Artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: terraform-plan
+#           path: ${{ steps.setdir.outputs.working_dir }}/tfplan
+
+#       # ⚙️ Apply based on environment
+#       - name: Terraform Apply (Dev)
+#         if: github.event.inputs.environment == 'dev'
+#         working-directory: ${{ steps.setdir.outputs.working_dir }}
+#         run: |
+#           echo "🚀 Applying Terraform changes to DEV environment..."
+#           terraform apply -auto-approve tfplan
+
+#       - name: Terraform Apply (Prod)
+#         if: github.event.inputs.environment == 'prod'
+#         working-directory: ${{ steps.setdir.outputs.working_dir }}
+#         run: |
+#           echo "⚠️ Applying Terraform changes to PROD environment..."
+#           terraform apply -auto-approve tfplan
+
+
+
+name: Terraform Multi-Env CI/CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select environment to deploy (dev/prod)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
+
+jobs:
+  terraform:
+    name: Terraform Deploy
+    runs-on: ubuntu-latest
+
+    env:
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Azure Login using Service Principal
+        run: |
+          az login --service-principal \
+            -u $ARM_CLIENT_ID \
+            -p $ARM_CLIENT_SECRET \
+            --tenant $ARM_TENANT_ID
+          
+          az account set --subscription $ARM_SUBSCRIPTION_ID
+          echo "✅ Azure login successful!"
+
+      # 🔹 Set working directory dynamically (env/dev or env/prod)
+      - name: Set working directory
+        id: setdir
+        run: echo "working_dir=env/${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+
+      - name: Terraform Init
+        working-directory: ${{ steps.setdir.outputs.working_dir }}
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: ${{ steps.setdir.outputs.working_dir }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ${{ steps.setdir.outputs.working_dir }}
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: ${{ steps.setdir.outputs.working_dir }}/tfplan
+
+      - name: Terraform Apply
+        working-directory: ${{ steps.setdir.outputs.working_dir }}
+        run: |
+          echo "🚀 Applying Terraform changes to ${{ github.event.inputs.environment }} environment..."
+          terraform apply -auto-approve tfplan

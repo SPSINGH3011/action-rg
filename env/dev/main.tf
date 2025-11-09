@@ -13,7 +13,8 @@ provider "azurerm" {
 }
 
 
-resource "azurerm_resource_group" "action" {
-  name     = "action-rg"
-  location = "West Europe"
+module "resource_group" {
+  source      = "../../module/resource_group"
+  rg-name     = "dev-resource-group"
+  rg-location = "East US"
 }
