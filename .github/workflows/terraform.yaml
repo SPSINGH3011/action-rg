@@ -1,0 +1,81 @@
+name: Terraform CI/CD    # name of the workflow
+
+# on:                # triggers for the workflow
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+
+on:
+  workflow_dispatch:                 # manual trigger
+    inputs:
+      environment:
+        description: "Select environment to deploy (dev/prod)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
+
+
+jobs:
+  terraform:
+    name: Terraform Init, Plan & Apply
+    runs-on: ubuntu-latest                       # runner environment
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Setup Azure CLI
+        uses: azure/cli@v2
+
+      - name: Azure Login using Service Principal
+        run: |
+          az login --service-principal \
+            -u $ARM_CLIENT_ID \
+            -p $ARM_CLIENT_SECRET \
+            --tenant $ARM_TENANT_ID
+          
+          az account set --subscription $ARM_SUBSCRIPTION_ID
+          
+          echo "✅ Azure login successful!"
+    steps:
+      - name: Terraform Init
+        run: terraform init -input=false
+    steps:
+      - name: Terraform Validate
+        run: terraform validate
+    steps:
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+    steps:
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: tfplan
+    # steps:
+    #   - name: Terraform Apply (Manual Approval for Prod)
+    #     if: github.event.inputs.environment == 'prod'
+    #     run: |
+    #       echo "⚠️ Applying Terraform changes to PROD environment..."
+    #       terraform apply -auto-approve tfplan
+    steps:
+      - name: Terraform Apply (Auto Apply for Dev)
+        if: github.event.inputs.environment == 'dev'
+        run: |
+          echo "🚀 Applying Terraform changes to DEV environment..."
+          terraform apply -auto-approve tfplan
