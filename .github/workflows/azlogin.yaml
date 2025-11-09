@@ -87,7 +87,7 @@
 
 
 
-name: Terraform Multi-Env CI/CD
+name: Terraform Multi-Env-azlogin CI/CD
 
 on:
   workflow_dispatch:
