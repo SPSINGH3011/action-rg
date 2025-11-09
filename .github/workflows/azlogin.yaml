@@ -132,8 +132,8 @@ jobs:
       #     echo "✅ Azure login successful!"
 
       - name: Azure Login
-         uses: azure/login@v2
-         with:
+        uses: azure/login@v2
+        with:
          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # 🔹 Set working directory dynamically (env/dev or env/prod)
